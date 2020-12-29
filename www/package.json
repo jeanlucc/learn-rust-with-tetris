@@ -1,0 +1,33 @@
+{
+  "name": "tetris",
+  "version": "0.1.0",
+  "description": "create an app to consume rust-generated tetris package",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "start": "webpack-dev-server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rustwasm/create-wasm-app.git"
+  },
+  "keywords": [
+    "webassembly",
+    "wasm",
+    "rust",
+    "webpack"
+  ],
+  "author": "jeanlucc <jeanlucc@users.noreply.github.com>",
+  "license": "(MIT OR Apache-2.0)",
+  "dependencies": {
+    "tetris": "file:../pkg"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^5.0.0",
+    "css-loader": "^5.0.1",
+    "style-loader": "^2.0.0",
+    "webpack": "^4.29.3",
+    "webpack-cli": "^3.1.0",
+    "webpack-dev-server": "^3.11.0"
+  }
+}
