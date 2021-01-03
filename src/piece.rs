@@ -1,14 +1,29 @@
+use rand::Rng;
+use rand::distributions::{Distribution, Standard};
 use std::ops::Add;
 
 #[derive(Clone, Copy)]
 pub enum Type {
-    Bar,
-//    T,
-//    Square,
-//    L,
-//    ReverseL
-//    S,
-//    ReverseS
+    I,
+    T,
+    O,
+    L,
+    J,
+    S,
+    Z,
+}
+impl Distribution<Type> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Type {
+        match rng.gen_range(0..7) {
+            0 => Type::I,
+            1 => Type::T,
+            2 => Type::O,
+            3 => Type::L,
+            4 => Type::J,
+            5 => Type::S,
+            _ => Type::Z,
+        }
+    }
 }
 
 #[repr(u8)]
@@ -42,23 +57,6 @@ pub struct Cell(pub Option<Type>);
 
 pub type Shape = Vec<Vec<Cell>>;
 
-pub trait Piece {
-    fn row_offset(&self) -> i32;
-    fn column_offset(&self) -> i32;
-//    fn orientation(&self) -> Orientation;
-    fn rotate_clockwise(&mut self);
-    fn rotate_anticlockwise(&mut self);
-    fn move_down(&mut self);
-    fn move_left(&mut self);
-    fn move_right(&mut self);
-    fn revert_move_down(&mut self);
-    fn shape(&self) -> &Shape;
-}
-
-trait PieceTemplate {
-    fn shape(&self, orientation: Orientation) -> &Shape;
-}
-
 fn rotate_quarter_cycle_clockwise(shape: &Shape) -> Shape {
     let size = shape.len();
     for row in shape.iter() {
@@ -85,17 +83,16 @@ pub fn index(shape_index: usize, offset: i32) -> Option<usize> {
     }
 }
 
-// Bar Piece
-struct BarTemplate {
+struct PieceTemplate {
     top_shape: Shape,
     right_shape: Shape,
     bottom_shape: Shape,
     left_shape: Shape,
 }
-impl BarTemplate {
-    pub fn new() -> Self {
-        let top_shape = Self::top_shape();
-        let right_shape = rotate_quarter_cycle_clockwise(&Self::top_shape());
+impl PieceTemplate {
+    pub fn new(piece_type: Type) -> Self {
+        let top_shape = Self::type_top_shape(piece_type);
+        let right_shape = rotate_quarter_cycle_clockwise(&top_shape);
         let bottom_shape = rotate_quarter_cycle_clockwise(&right_shape);
         let left_shape = rotate_quarter_cycle_clockwise(&bottom_shape);
 
@@ -107,71 +104,127 @@ impl BarTemplate {
         }
     }
 
-    fn top_shape() -> Shape {
+    fn type_top_shape(piece_type: Type) -> Shape {
+        match piece_type {
+            Type::I => Self::i_top_shape(),
+            Type::T => Self::t_top_shape(),
+            Type::O => Self::o_top_shape(),
+            Type::L => Self::l_top_shape(),
+            Type::J => Self::j_top_shape(),
+            Type::S => Self::s_top_shape(),
+            Type::Z => Self::z_top_shape(),
+        }
+    }
+
+    fn top_shape(&self) -> &Shape {
+        &self.top_shape
+    }
+    fn right_shape(&self) -> &Shape {
+        &self.right_shape
+    }
+    fn bottom_shape(&self) -> &Shape {
+        &self.bottom_shape
+    }
+    fn left_shape(&self) -> &Shape {
+        &self.left_shape
+    }
+
+    fn i_top_shape() -> Shape {
         vec![
             vec![Cell(Option::None), Cell(Option::None), Cell(Option::None), Cell(Option::None)],
-            vec![Cell(Option::Some(Type::Bar)), Cell(Option::Some(Type::Bar)), Cell(Option::Some(Type::Bar)), Cell(Option::Some(Type::Bar))],
+            vec![Cell(Option::Some(Type::I)), Cell(Option::Some(Type::I)), Cell(Option::Some(Type::I)), Cell(Option::Some(Type::I))],
             vec![Cell(Option::None), Cell(Option::None), Cell(Option::None), Cell(Option::None)],
             vec![Cell(Option::None), Cell(Option::None), Cell(Option::None), Cell(Option::None)],
         ]
     }
-}
-impl PieceTemplate for BarTemplate {
-    fn shape(&self, orientation: Orientation) -> &Shape {
-        match orientation {
-            Orientation::Top => &self.top_shape,
-            Orientation::Right => &self.right_shape,
-            Orientation::Bottom => &self.bottom_shape,
-            Orientation::Left => &self.left_shape,
-        }
+    fn t_top_shape() -> Shape {
+        vec![
+            vec![Cell(Option::None), Cell(Option::Some(Type::T)), Cell(Option::None)],
+            vec![Cell(Option::Some(Type::T)), Cell(Option::Some(Type::T)), Cell(Option::Some(Type::T))],
+            vec![Cell(Option::None), Cell(Option::None), Cell(Option::None)],
+        ]
+    }
+    fn o_top_shape() -> Shape {
+        vec![
+            vec![Cell(Option::Some(Type::O)), Cell(Option::Some(Type::O))],
+            vec![Cell(Option::Some(Type::O)), Cell(Option::Some(Type::O))],
+        ]
+    }
+    fn l_top_shape() -> Shape {
+        vec![
+            vec![Cell(Option::Some(Type::L)), Cell(Option::None), Cell(Option::None)],
+            vec![Cell(Option::Some(Type::L)), Cell(Option::Some(Type::L)), Cell(Option::Some(Type::L))],
+            vec![Cell(Option::None), Cell(Option::None), Cell(Option::None)],
+        ]
+    }
+    fn j_top_shape() -> Shape {
+        vec![
+            vec![Cell(Option::None), Cell(Option::None), Cell(Option::Some(Type::J))],
+            vec![Cell(Option::Some(Type::J)), Cell(Option::Some(Type::J)), Cell(Option::Some(Type::J))],
+            vec![Cell(Option::None), Cell(Option::None), Cell(Option::None)],
+        ]
+    }
+    fn s_top_shape() -> Shape {
+        vec![
+            vec![Cell(Option::None), Cell(Option::None), Cell(Option::None)],
+            vec![Cell(Option::Some(Type::S)), Cell(Option::Some(Type::S)), Cell(Option::None)],
+            vec![Cell(Option::None), Cell(Option::Some(Type::S)), Cell(Option::Some(Type::S))],
+        ]
+    }
+    fn z_top_shape() -> Shape {
+        vec![
+            vec![Cell(Option::None), Cell(Option::None), Cell(Option::None)],
+            vec![Cell(Option::None), Cell(Option::Some(Type::Z)), Cell(Option::Some(Type::Z))],
+            vec![Cell(Option::Some(Type::Z)), Cell(Option::Some(Type::Z)), Cell(Option::None)],
+        ]
     }
 }
 
-pub struct Bar {
-    template: BarTemplate,
+pub struct Piece {
+    template: PieceTemplate,
     row_offset: i32,
     column_offset: i32,
     orientation: Orientation,
 }
-impl Bar {
-    pub fn new(row_offset: i32, column_offset: i32) -> Self {
+impl Piece {
+    pub fn new(row_offset: i32, column_offset: i32, piece_type: Type) -> Self {
         Self {
-            template: BarTemplate::new(),
+            template: PieceTemplate::new(piece_type),
             row_offset,
             column_offset,
             orientation: Orientation::Top,
         }
     }
-}
-impl Piece for Bar {
-    fn row_offset(&self) -> i32 {
+    pub fn row_offset(&self) -> i32 {
         self.row_offset
     }
-    fn column_offset(&self) -> i32 {
+    pub fn column_offset(&self) -> i32 {
         self.column_offset
     }
-//    fn orientation(&self) -> Orientation {
-//        self.orientation
-//    }
-    fn rotate_clockwise(&mut self) {
+    pub fn rotate_clockwise(&mut self) {
         self.orientation = self.orientation + 1;
     }
-    fn rotate_anticlockwise(&mut self) {
+    pub fn rotate_anticlockwise(&mut self) {
         self.orientation = self.orientation + -1;
     }
-    fn move_down(&mut self) {
+    pub fn move_down(&mut self) {
         self.row_offset -= 1;
     }
-    fn move_left(&mut self) {
+    pub fn move_left(&mut self) {
         self.column_offset -= 1;
     }
-    fn move_right(&mut self) {
+    pub fn move_right(&mut self) {
         self.column_offset += 1;
     }
-    fn revert_move_down(&mut self) {
+    pub fn revert_move_down(&mut self) {
         self.row_offset += 1;
     }
-    fn shape(&self) -> &Shape {
-        self.template.shape(self.orientation)
+    pub fn shape(&self) -> &Shape {
+        match self.orientation {
+            Orientation::Top => &self.template.top_shape(),
+            Orientation::Right => &self.template.right_shape(),
+            Orientation::Bottom => &self.template.bottom_shape(),
+            Orientation::Left => &self.template.left_shape(),
+        }
     }
 }

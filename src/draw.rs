@@ -3,8 +3,6 @@ use super::game::Game;
 use super::piece;
 use super::piece::Piece;
 
-use std::rc::Rc;
-use std::cell::RefCell;
 use web_sys::CanvasRenderingContext2d;
 use wasm_bindgen::JsValue;
 
@@ -57,16 +55,16 @@ fn draw_board_cells(context: &DrawContext, board: &Board) {
     }
 }
 
-fn draw_piece(context: &DrawContext, piece: &Rc<RefCell<dyn Piece>>) {
+fn draw_piece(context: &DrawContext, piece: &Piece) {
     let mut is_color_set = false;
-    for (shape_row_index, row) in piece.borrow().shape().iter().enumerate() {
+    for (shape_row_index, row) in piece.shape().iter().enumerate() {
         for (shape_column_index, cell) in row.iter().enumerate() {
             if let None = cell.0 {
                 continue;
             };
 
-            let row = piece::index(shape_row_index, piece.borrow().row_offset());
-            let column = piece::index(shape_column_index, piece.borrow().column_offset());
+            let row = piece::index(shape_row_index, piece.row_offset());
+            let column = piece::index(shape_column_index, piece.column_offset());
             let (row, column) = match (row, column) {
                 (Some(row), Some(column)) => (row, column),
                 _ => continue,
@@ -99,7 +97,13 @@ fn draw_cell(context: &DrawContext, row: usize, column: usize) {
 
 fn get_cell_color(cell: &piece::Cell) -> String {
     match cell.0 {
-        Some(piece::Type::Bar) => "#A0A".to_string(),
-        _ => "#A00".to_string(),
+        Some(piece::Type::I) => "cyan".to_string(),
+        Some(piece::Type::T) => "purple".to_string(),
+        Some(piece::Type::O) => "yellow".to_string(),
+        Some(piece::Type::L) => "orange".to_string(),
+        Some(piece::Type::J) => "blue".to_string(),
+        Some(piece::Type::S) => "lime".to_string(),
+        Some(piece::Type::Z) => "red".to_string(),
+        None => "#DDD".to_string(),
     }
 }
