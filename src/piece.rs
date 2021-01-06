@@ -1,5 +1,3 @@
-use rand::Rng;
-use rand::distributions::{Distribution, Standard};
 use std::ops::Add;
 
 #[derive(Clone, Copy)]
@@ -11,19 +9,6 @@ pub enum Type {
     J,
     S,
     Z,
-}
-impl Distribution<Type> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Type {
-        match rng.gen_range(0..7) {
-            0 => Type::I,
-            1 => Type::T,
-            2 => Type::O,
-            3 => Type::L,
-            4 => Type::J,
-            5 => Type::S,
-            _ => Type::Z,
-        }
-    }
 }
 
 #[repr(u8)]
@@ -75,6 +60,22 @@ fn rotate_quarter_cycle_clockwise(shape: &Shape) -> Shape {
     rotated
 }
 
+fn horizontal_center_offset(shape: &Shape) -> u32 {
+    (shape.len() as u32 + 1) / 2
+}
+
+fn empty_row_offset(shape: &Shape) -> u32 {
+    for (i, row) in shape.iter().enumerate() {
+        for cell in row.iter() {
+            if let Some(_) = cell.0 {
+                return i as u32
+            }
+        }
+    }
+
+    panic!("empty shape");
+}
+
 pub fn index(shape_index: usize, offset: i32) -> Option<usize> {
     match offset {
         _ if offset < 0 => shape_index.checked_sub((-offset) as usize),
@@ -88,6 +89,8 @@ struct PieceTemplate {
     right_shape: Shape,
     bottom_shape: Shape,
     left_shape: Shape,
+    horizontal_center_offset: u32,
+    empty_row_offset: u32,
 }
 impl PieceTemplate {
     pub fn new(piece_type: Type) -> Self {
@@ -95,12 +98,16 @@ impl PieceTemplate {
         let right_shape = rotate_quarter_cycle_clockwise(&top_shape);
         let bottom_shape = rotate_quarter_cycle_clockwise(&right_shape);
         let left_shape = rotate_quarter_cycle_clockwise(&bottom_shape);
+        let horizontal_center_offset = horizontal_center_offset(&top_shape);
+        let empty_row_offset = empty_row_offset(&top_shape);
 
         Self {
             top_shape,
             right_shape,
             bottom_shape,
             left_shape,
+            horizontal_center_offset,
+            empty_row_offset,
         }
     }
 
@@ -128,6 +135,12 @@ impl PieceTemplate {
     fn left_shape(&self) -> &Shape {
         &self.left_shape
     }
+    fn horizontal_center_offset(&self) -> u32 {
+        self.horizontal_center_offset
+    }
+    fn empty_row_offset(&self) -> u32 {
+        self.empty_row_offset
+    }
 
     fn i_top_shape() -> Shape {
         vec![
@@ -139,9 +152,9 @@ impl PieceTemplate {
     }
     fn t_top_shape() -> Shape {
         vec![
-            vec![Cell(Option::None), Cell(Option::Some(Type::T)), Cell(Option::None)],
-            vec![Cell(Option::Some(Type::T)), Cell(Option::Some(Type::T)), Cell(Option::Some(Type::T))],
             vec![Cell(Option::None), Cell(Option::None), Cell(Option::None)],
+            vec![Cell(Option::Some(Type::T)), Cell(Option::Some(Type::T)), Cell(Option::Some(Type::T))],
+            vec![Cell(Option::None), Cell(Option::Some(Type::T)), Cell(Option::None)],
         ]
     }
     fn o_top_shape() -> Shape {
@@ -152,16 +165,16 @@ impl PieceTemplate {
     }
     fn l_top_shape() -> Shape {
         vec![
-            vec![Cell(Option::Some(Type::L)), Cell(Option::None), Cell(Option::None)],
-            vec![Cell(Option::Some(Type::L)), Cell(Option::Some(Type::L)), Cell(Option::Some(Type::L))],
             vec![Cell(Option::None), Cell(Option::None), Cell(Option::None)],
+            vec![Cell(Option::Some(Type::L)), Cell(Option::Some(Type::L)), Cell(Option::Some(Type::L))],
+            vec![Cell(Option::None), Cell(Option::None), Cell(Option::Some(Type::L))],
         ]
     }
     fn j_top_shape() -> Shape {
         vec![
-            vec![Cell(Option::None), Cell(Option::None), Cell(Option::Some(Type::J))],
-            vec![Cell(Option::Some(Type::J)), Cell(Option::Some(Type::J)), Cell(Option::Some(Type::J))],
             vec![Cell(Option::None), Cell(Option::None), Cell(Option::None)],
+            vec![Cell(Option::Some(Type::J)), Cell(Option::Some(Type::J)), Cell(Option::Some(Type::J))],
+            vec![Cell(Option::Some(Type::J)), Cell(Option::None), Cell(Option::None)],
         ]
     }
     fn s_top_shape() -> Shape {
@@ -185,6 +198,7 @@ pub struct Piece {
     row_offset: i32,
     column_offset: i32,
     orientation: Orientation,
+    piece_type: Type,
 }
 impl Piece {
     pub fn new(row_offset: i32, column_offset: i32, piece_type: Type) -> Self {
@@ -193,6 +207,7 @@ impl Piece {
             row_offset,
             column_offset,
             orientation: Orientation::Top,
+            piece_type,
         }
     }
     pub fn row_offset(&self) -> i32 {
@@ -200,6 +215,9 @@ impl Piece {
     }
     pub fn column_offset(&self) -> i32 {
         self.column_offset
+    }
+    pub fn piece_type(&self) -> Type {
+        self.piece_type
     }
     pub fn rotate_clockwise(&mut self) {
         self.orientation = self.orientation + 1;
@@ -227,4 +245,11 @@ impl Piece {
             Orientation::Left => &self.template.left_shape(),
         }
     }
+    pub fn horizontal_center_offset(&self) -> u32 {
+        self.template.horizontal_center_offset()
+    }
+    pub fn empty_row_offset(&self) -> u32 {
+        self.template.empty_row_offset()
+    }
+
 }

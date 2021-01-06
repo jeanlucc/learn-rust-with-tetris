@@ -12,7 +12,7 @@ impl Board {
         Board {
             width,
             height,
-            cells: vec!(vec!(piece::Cell(Option::None); width as usize); (height + 2) as usize),
+            cells: vec!(vec!(piece::Cell(Option::None); width as usize); Self::compute_height_with_hidden_top(height)),
         }
     }
 
@@ -44,31 +44,15 @@ impl Board {
         }
     }
 
-    pub fn is_legal(&self, piece: &Piece) -> bool {
-        let shape = piece.shape();
-        for (shape_row_index, row) in shape.iter().enumerate() {
-            for (shape_column_index, cell) in row.iter().enumerate() {
-                if let None = cell.0 {
-                    continue;
-                };
-
-                let i = piece::index(shape_row_index, piece.row_offset());
-                let j = piece::index(shape_column_index, piece.column_offset());
-
-                if None == i || i.unwrap() as u32 >= self.height || None == j || j.unwrap() as u32 >= self.width {
-                    return false
-                }
-
-                if let Option::Some(_) = self.cells[i.unwrap()][j.unwrap()].0 {
-                    return false
-                }
-            }
-        }
-
-        true
+    pub fn is_colliding(&self, piece: &Piece) -> bool {
+        !self.in_available_cells_below(piece, self.height_with_hidden_top())
     }
 
-    pub fn clear_lines(&mut self) -> u32 {
+    pub fn is_fully_in(&self, piece: &Piece) -> bool {
+        self.in_available_cells_below(piece, self.height as usize)
+    }
+
+    pub fn clear_lines(&mut self) -> Vec<usize> {
         let mut index_to_remove = Vec::with_capacity(4);
         for (row_index, row) in self.cells().iter().enumerate() {
             let mut is_index_to_remove = true;
@@ -85,8 +69,16 @@ impl Board {
         for &index in index_to_remove.iter().rev() {
             self.cells.remove(index);
         }
-        self.cells.resize(self.height as usize, vec!(piece::Cell(Option::None); self.width as usize));
-        index_to_remove.len() as u32
+        self.cells.resize(self.height_with_hidden_top(), vec!(piece::Cell(Option::None); self.width as usize));
+        index_to_remove
+    }
+
+    fn compute_height_with_hidden_top(height: u32) -> usize {
+        height as usize + 4
+    }
+
+    fn height_with_hidden_top(&self) -> usize {
+        Self::compute_height_with_hidden_top(self.height)
     }
 
     fn i(&self, shape_row_index: usize, row_offset: i32) -> usize {
@@ -105,5 +97,29 @@ impl Board {
         }
 
         index.unwrap()
+    }
+
+    fn in_available_cells_below(&self, piece: &Piece, height: usize) -> bool {
+        let shape = piece.shape();
+        for (shape_row_index, row) in shape.iter().enumerate() {
+            for (shape_column_index, cell) in row.iter().enumerate() {
+                if let None = cell.0 {
+                    continue;
+                };
+
+                let i = piece::index(shape_row_index, piece.row_offset());
+                let j = piece::index(shape_column_index, piece.column_offset());
+
+                if None == i || i.unwrap() >= height || None == j || j.unwrap() as u32 >= self.width {
+                    return false
+                }
+
+                if let Option::Some(_) = self.cells[i.unwrap()][j.unwrap()].0 {
+                    return false
+                }
+            }
+        }
+
+        true
     }
 }

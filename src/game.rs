@@ -1,15 +1,18 @@
 use super::board::Board;
 use super::piece::Piece;
 use super::piece;
+use super::piece_type_bag_generator::PieceTypeGenerator;
 
+use std::collections::VecDeque;
 use web_sys::console;
 
 pub struct Game {
     board: Board,
     piece: Option<Piece>,
-    _next_piece: Option<Piece>,
+    next_pieces: VecDeque<Piece>,
     _shadow_piece: Option<Piece>,
     score: u32,
+    generator: PieceTypeGenerator,
 }
 
 impl Game {
@@ -17,9 +20,10 @@ impl Game {
         Game{
             board: Board::new(20, 10),
             piece: None,
-            _next_piece: None,
+            next_pieces: VecDeque::with_capacity(3),
             _shadow_piece: None,
             score: 0,
+            generator: PieceTypeGenerator::new(),
         }
     }
 
@@ -37,14 +41,20 @@ impl Game {
             Some(piece) => piece,
         };
         piece.move_down();
-        if self.board.is_legal(&piece) {
-            console::log_1(&"legal".into());
+        if !self.board.is_colliding(&piece) {
+            console::log_1(&"no collision".into());
             return
         }
+        console::log_1(&"collision".into());
         piece.revert_move_down();
+        if !self.board.is_fully_in(&piece) {
+            self.game_over();
+            return
+        }
         self.board.freeze(self.piece.take().unwrap());
+        console::log_1(&"froze to board".into());
         let cleared_lines = self.board.clear_lines();
-        self.update_score(cleared_lines);
+        self.update_score(cleared_lines.len() as u32);
         self.spawn();
     }
 
@@ -58,8 +68,8 @@ impl Game {
             Some(piece) => piece,
         };
         piece.move_left();
-        if self.board.is_legal(&piece) {
-            console::log_1(&"legal".into());
+        if !self.board.is_colliding(&piece) {
+            console::log_1(&"no collision".into());
             return
         }
         piece.move_right();
@@ -75,8 +85,8 @@ impl Game {
             Some(piece) => piece,
         };
         piece.move_right();
-        if self.board.is_legal(&piece) {
-            console::log_1(&"legal".into());
+        if !self.board.is_colliding(&piece) {
+            console::log_1(&"no collision".into());
             return
         }
         piece.move_left();
@@ -92,8 +102,8 @@ impl Game {
             Some(piece) => piece,
         };
         piece.rotate_clockwise();
-        if self.board.is_legal(&piece) {
-            console::log_1(&"legal".into());
+        if !self.board.is_colliding(&piece) {
+            console::log_1(&"no collision".into());
             return
         }
         piece.rotate_anticlockwise();
@@ -104,18 +114,38 @@ impl Game {
         self.spawn();
     }
 
-    fn create_random_piece() -> Piece {
-        let piece = Piece::new(17, 3, rand::random());
+    fn create_next_piece(&mut self) -> Piece {
+        Piece::new(0, 0, self.generator.next_piece_type())
+    }
+
+    fn fill_next_pieces(&mut self) {
+        for _ in 0..(3 - self.next_pieces.len()) {
+            console::log_1(&"push new piece".into());
+            let piece = self.create_next_piece();
+            self.next_pieces.push_back(piece);
+        }
+    }
+
+    fn pop_next_piece(&mut self) -> Piece {
+        if self.next_pieces.len() < 3 {
+            self.fill_next_pieces();
+        }
+
+        let piece = match self.next_pieces.pop_front() {
+            Some(piece) => piece,
+            None => self.create_next_piece(),
+        };
+
+        self.fill_next_pieces();
+
         piece
     }
 
     fn spawn(&mut self) {
-        let piece = Self::create_random_piece();
-        if !self.board.is_legal(&piece) {
-            self.game_over();
-            return
-        }
-        self.piece = Some(piece);
+        let piece = self.pop_next_piece();
+        let row = self.board.height() - piece.empty_row_offset();
+        let column = self.board.width() / 2 - piece.horizontal_center_offset();
+        self.piece = Some(Piece::new(row as i32, column as i32, piece.piece_type()));
         console::log_1(&"spawned".into());
     }
 

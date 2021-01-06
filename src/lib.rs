@@ -3,6 +3,7 @@ mod board;
 mod draw;
 mod piece;
 mod game;
+mod piece_type_bag_generator;
 
 extern crate web_sys;
 
