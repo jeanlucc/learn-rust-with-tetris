@@ -21,7 +21,7 @@ pub fn draw(game: &Game, context: &CanvasRenderingContext2d, zoom: u32) {
     let board = game.board();
     let canvas = context.canvas().unwrap();
     canvas.set_width(board.width() * (zoom+1));
-    canvas.set_height(board.height() * (zoom+1));
+    canvas.set_height((board.height()+4) * (zoom+1));
     context.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
     let context = DrawContext::new(&context, zoom);
     draw_grid(&context, board.width(), board.height());
@@ -35,14 +35,19 @@ fn draw_grid(context: &DrawContext, width: u32, height: u32) {
     let (context, zoom) = (context.canvas_context, context.zoom);
     context.set_stroke_style(&JsValue::from_str("#AAA"));
     context.begin_path();
-    for row in 0..height+1 {
+    for row in 0..(height+1+4) {
         context.move_to(0., (row*(zoom+1)) as f64);
         context.line_to((width*(zoom+1)) as f64, (row*(zoom+1)) as f64);
     }
     for column in 0..width+1 {
         context.move_to((column*(zoom+1)) as f64, 0.);
-        context.line_to((column*(zoom+1)) as f64, (height*(zoom+1)) as f64);
+        context.line_to((column*(zoom+1)) as f64, ((height+4)*(zoom+1)) as f64);
     }
+    context.stroke();
+    context.begin_path();
+    context.set_stroke_style(&JsValue::from_str("#F00"));
+    context.move_to(0., (4*(zoom+1)) as f64);
+    context.line_to((width*(zoom+1)) as f64, (4*(zoom+1)) as f64);
     context.stroke();
 }
 
