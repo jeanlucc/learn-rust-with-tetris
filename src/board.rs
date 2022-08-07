@@ -2,26 +2,33 @@ use super::piece::Piece;
 use super::piece;
 
 pub struct Board {
-    width: u32,
-    height: u32,
+    width: usize,
+    height: usize,
+    max_piece_size: usize,
     cells: Vec<Vec<piece::Cell>>,
 }
 
 impl Board {
-    pub fn new(height: u32, width: u32) -> Self {
+    pub fn new(height: usize, width: usize) -> Self {
+        let max_piece_size = 4;
         Board {
             width,
             height,
-            cells: vec!(vec!(piece::Cell(Option::None); width as usize); Self::compute_height_with_hidden_top(height)),
+            max_piece_size,
+            cells: vec!(vec!(piece::Cell(Option::None); width); height + max_piece_size),
         }
     }
 
-    pub fn width(&self) -> u32 {
+    pub fn width(&self) -> usize {
         self.width
     }
 
-    pub fn height(&self) -> u32 {
+    pub fn height(&self) -> usize {
         self.height
+    }
+
+    pub fn max_piece_size(&self) -> usize {
+        self.max_piece_size
     }
 
     pub fn cells(&self) -> &Vec<Vec<piece::Cell>> {
@@ -53,7 +60,7 @@ impl Board {
     }
 
     pub fn clear_lines(&mut self) -> Vec<usize> {
-        let mut index_to_remove = Vec::with_capacity(4);
+        let mut index_to_remove = Vec::with_capacity(self.max_piece_size as usize);
         for (row_index, row) in self.cells().iter().enumerate() {
             let mut is_index_to_remove = true;
             for cell in row.iter() {
@@ -73,12 +80,8 @@ impl Board {
         index_to_remove
     }
 
-    fn compute_height_with_hidden_top(height: u32) -> usize {
-        height as usize + 4
-    }
-
     fn height_with_hidden_top(&self) -> usize {
-        Self::compute_height_with_hidden_top(self.height)
+        self.height + self.max_piece_size
     }
 
     fn i(&self, shape_row_index: usize, row_offset: i32) -> usize {
@@ -89,10 +92,10 @@ impl Board {
         Self::in_limit_index(shape_column_index, column_offset, self.width)
     }
 
-    fn in_limit_index(shape_index: usize, offset: i32, limit: u32) -> usize {
+    fn in_limit_index(shape_index: usize, offset: i32, limit: usize) -> usize {
         let index = piece::index(shape_index, offset);
 
-        if None == index || index.unwrap() as u32 >= limit {
+        if None == index || index.unwrap() >= limit {
             panic!("Froze piece out of board");
         }
 
@@ -110,7 +113,7 @@ impl Board {
                 let i = piece::index(shape_row_index, piece.row_offset());
                 let j = piece::index(shape_column_index, piece.column_offset());
 
-                if None == i || i.unwrap() >= height || None == j || j.unwrap() as u32 >= self.width {
+                if None == i || i.unwrap() >= height || None == j || j.unwrap() >= self.width {
                     return false
                 }
 

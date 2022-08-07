@@ -1,6 +1,5 @@
 use super::board::Board;
 use super::piece::Piece;
-use super::piece;
 use super::piece_type_bag_generator::PieceTypeGenerator;
 
 use std::collections::VecDeque;
@@ -9,6 +8,7 @@ use web_sys::console;
 pub struct Game {
     board: Board,
     piece: Option<Piece>,
+    next_pieces_capacity: usize,
     next_pieces: VecDeque<Piece>,
     _shadow_piece: Option<Piece>,
     score: u32,
@@ -17,10 +17,12 @@ pub struct Game {
 
 impl Game {
     pub fn new() -> Self {
+        let next_pieces_capacity: usize = 3;
         Game{
             board: Board::new(20, 10),
             piece: None,
-            next_pieces: VecDeque::with_capacity(3),
+            next_pieces_capacity,
+            next_pieces: VecDeque::with_capacity(next_pieces_capacity),
             _shadow_piece: None,
             score: 0,
             generator: PieceTypeGenerator::new(),
@@ -119,7 +121,7 @@ impl Game {
     }
 
     fn fill_next_pieces(&mut self) {
-        for _ in 0..(3 - self.next_pieces.len()) {
+        for _ in 0..(self.next_pieces_capacity - self.next_pieces.len()) {
             console::log_1(&"push new piece".into());
             let piece = self.create_next_piece();
             self.next_pieces.push_back(piece);
@@ -127,7 +129,7 @@ impl Game {
     }
 
     fn pop_next_piece(&mut self) -> Piece {
-        if self.next_pieces.len() < 3 {
+        if self.next_pieces.len() < self.next_pieces_capacity {
             self.fill_next_pieces();
         }
 
@@ -143,8 +145,8 @@ impl Game {
 
     fn spawn(&mut self) {
         let piece = self.pop_next_piece();
-        let row = self.board.height() - piece.empty_row_offset();
-        let column = self.board.width() / 2 - piece.horizontal_center_offset();
+        let row = self.board.height() as u32 - piece.empty_row_offset();
+        let column = self.board.width() as u32 / 2 - piece.horizontal_center_offset();
         self.piece = Some(Piece::new(row as i32, column as i32, piece.piece_type()));
         console::log_1(&"spawned".into());
     }
@@ -166,5 +168,9 @@ impl Game {
 
     pub fn piece(&self) -> Option<&Piece> {
         self.piece.as_ref()
+    }
+
+    pub fn next_pieces(&self) -> &VecDeque<Piece> {
+        &self.next_pieces
     }
 }

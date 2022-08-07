@@ -8,7 +8,8 @@ mod piece_type_bag_generator;
 extern crate web_sys;
 
 use game::Game;
-use draw::draw;
+use draw::draw_board;
+use draw::draw_next_pieces;
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -16,7 +17,6 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::CanvasRenderingContext2d;
 use web_sys::Document;
-//use web_sys::console;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -87,16 +87,22 @@ where
 }
 
 fn setup_draw(game: Rc<RefCell<Game>>) {
-    let context = document()
-        .get_element_by_id("board").unwrap()
-        .dyn_into::<web_sys::HtmlCanvasElement>().unwrap()
-        .get_context("2d").unwrap().unwrap()
-        .dyn_into::<CanvasRenderingContext2d>().unwrap();
+    let board_context = get_context("board");
+    let next_context = get_context("next");
     let draw_func = Rc::new(RefCell::new(None));
     let init_draw_func = Rc::clone(&draw_func);
     *init_draw_func.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-        draw(&game.borrow(), &context, 30);
+        draw_board(&game.borrow(), &board_context, 30);
+        draw_next_pieces(&game.borrow(), &next_context, 15);
         request_animation_frame(draw_func.borrow().as_ref().unwrap());
     }) as Box<dyn FnMut()>));
     request_animation_frame(init_draw_func.borrow().as_ref().unwrap());
+}
+
+fn get_context(id: &'static str) -> CanvasRenderingContext2d {
+    document()
+        .get_element_by_id(id).unwrap()
+        .dyn_into::<web_sys::HtmlCanvasElement>().unwrap()
+        .get_context("2d").unwrap().unwrap()
+        .dyn_into::<CanvasRenderingContext2d>().unwrap()
 }

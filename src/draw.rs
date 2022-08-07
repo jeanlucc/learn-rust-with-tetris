@@ -3,35 +3,53 @@ use super::game::Game;
 use super::piece;
 use super::piece::Piece;
 
+use std::convert::TryInto;
 use web_sys::CanvasRenderingContext2d;
 use wasm_bindgen::JsValue;
 
 struct DrawContext<'a> {
     canvas_context: &'a CanvasRenderingContext2d,
-    zoom: u32,
+    zoom: usize,
 }
 
 impl<'a> DrawContext<'a> {
-    pub fn new(canvas_context: &'a CanvasRenderingContext2d, zoom: u32) -> DrawContext {
+    pub fn new(canvas_context: &'a CanvasRenderingContext2d, zoom: usize) -> DrawContext {
         DrawContext {canvas_context, zoom}
     }
 }
 
-pub fn draw(game: &Game, context: &CanvasRenderingContext2d, zoom: u32) {
+pub fn draw_board(game: &Game, context: &CanvasRenderingContext2d, zoom: usize) {
     let board = game.board();
     let canvas = context.canvas().unwrap();
-    canvas.set_width(board.width() * (zoom+1));
-    canvas.set_height((board.height()+4) * (zoom+1));
+    canvas.set_width((board.width() * (zoom+1)).try_into().unwrap());
+    canvas.set_height(((board.height() + board.max_piece_size()) * (zoom+1)).try_into().unwrap());
     context.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
     let context = DrawContext::new(&context, zoom);
-    draw_grid(&context, board.width(), board.height());
+    draw_grid(&context, board.width(), board.height() + board.max_piece_size());
+    draw_game_over_line(&context, board.width(), board.max_piece_size());
     draw_board_cells(&context, board);
     if let Some(piece) = game.piece() {
-        draw_piece(&context, &piece);
+        draw_piece(&context, &piece, 0, 0);
     }
 }
 
-fn draw_grid(context: &DrawContext, width: u32, height: u32) {
+pub fn draw_next_pieces(game: &Game, context: &CanvasRenderingContext2d, zoom: usize) {
+    let board = game.board();
+    let next_pieces = game.next_pieces();
+    let pieces_to_display = next_pieces.len();
+    let canvas = context.canvas().unwrap();
+    canvas.set_width((pieces_to_display * board.max_piece_size() * (zoom+1)).try_into().unwrap());
+    canvas.set_height((board.max_piece_size() * (zoom+1)).try_into().unwrap());
+    context.clear_rect(0.0, 0.0, canvas.width().into(), canvas.height().into());
+    let context = DrawContext::new(&context, zoom);
+    draw_grid(&context, pieces_to_display * board.max_piece_size(), board.max_piece_size());
+
+    for (i, next_piece) in next_pieces.iter().enumerate() {
+        draw_piece(&context, &next_piece, 0, (i * board.max_piece_size()) as i32);
+    }
+}
+
+fn draw_grid(context: &DrawContext, width: usize, height: usize) {
     let (context, zoom) = (context.canvas_context, context.zoom);
     context.set_stroke_style(&JsValue::from_str("#AAA"));
     context.begin_path();
@@ -44,9 +62,13 @@ fn draw_grid(context: &DrawContext, width: u32, height: u32) {
         context.line_to((column*(zoom+1)) as f64, ((height+4)*(zoom+1)) as f64);
     }
     context.stroke();
+}
+
+fn draw_game_over_line(context: &DrawContext, width: usize, top: usize) {
+    let (context, zoom) = (context.canvas_context, context.zoom);
     context.begin_path();
     context.set_stroke_style(&JsValue::from_str("#F00"));
-    context.move_to(0., (4*(zoom+1)) as f64);
+    context.move_to(0., (top*(zoom+1)) as f64);
     context.line_to((width*(zoom+1)) as f64, (4*(zoom+1)) as f64);
     context.stroke();
 }
@@ -60,7 +82,7 @@ fn draw_board_cells(context: &DrawContext, board: &Board) {
     }
 }
 
-fn draw_piece(context: &DrawContext, piece: &Piece) {
+fn draw_piece(context: &DrawContext, piece: &Piece, row_offset: i32, column_offset: i32) {
     let mut is_color_set = false;
     for (shape_row_index, row) in piece.shape().iter().enumerate() {
         for (shape_column_index, cell) in row.iter().enumerate() {
@@ -68,8 +90,8 @@ fn draw_piece(context: &DrawContext, piece: &Piece) {
                 continue;
             };
 
-            let row = piece::index(shape_row_index, piece.row_offset());
-            let column = piece::index(shape_column_index, piece.column_offset());
+            let row = piece::index(shape_row_index, piece.row_offset() + row_offset);
+            let column = piece::index(shape_column_index, piece.column_offset() + column_offset);
             let (row, column) = match (row, column) {
                 (Some(row), Some(column)) => (row, column),
                 _ => continue,
